@@ -161,7 +161,7 @@ export async function summarizeFile(llm, character, index, { path, text }) {
 }
 
 /** 扫两级目录，把每个文件夹概括进索引；目录没变就跳过。返回是否变了。 */
-export async function summarizealice(llm, character, index) {
+export async function summarizeAlice(llm, character, index) {
   const folders = scanFolders()
   let changed = false
   for (const folder of folders) {

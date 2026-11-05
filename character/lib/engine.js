@@ -40,7 +40,7 @@ import { loadSelfModel, rememberSelfLines, renderSelfModel, saveSelfModel } from
 import { loadStance, rememberStanceLines, renderStance, saveStance } from './stance.js'
 import { loadEvents, rememberEvents, renderEvents, saveEvents } from './events.js'
 import { loadFeelings, rememberFeeling, renderFeelings, saveFeelings } from './feelings.js'
-import { loadIndex, renderIndex, summarizeFile, summarizealice } from './aliceIndex.js'
+import { loadIndex, renderIndex, summarizeFile, summarizeAlice } from './aliceIndex.js'
 import { setReadHook } from '../tools.js'
 import { planReply, renderPlanTurn } from './planner.js'
 import { readReport, renderRoamBrief } from './reader.js'
@@ -1050,7 +1050,7 @@ export function createEngine(ctx) {
     const tick = async () => {
       if (!llm) return
       try {
-        await summarizealice(llm, character, aliceIndex)
+        await summarizeAlice(llm, character, aliceIndex)
       } catch {
         // 扫目录失败不影响别的。
       }
