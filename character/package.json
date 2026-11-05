@@ -1,0 +1,51 @@
+{
+  "name": "@alice/dsh-character",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "爱丽丝（Alice）：人格源文件驱动的 AI 伴侣插件（DeepSeek Harness 运行时）",
+  "author": "jszagyn (https://github.com/jszagyn)",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./voice": "./voice.js",
+    "./panel": "./panel.js",
+    "./qq": "./qq.js",
+    "./tools": "./tools.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "stats": "node scripts/stats.mjs",
+    "eval": "node scripts/eval.mjs",
+    "eval:update": "node scripts/eval.mjs --update",
+    "eval:cases": "node scripts/make-eval-cases.mjs",
+    "eval:semantic": "node scripts/eval-semantic.mjs",
+    "eval:semantic:cases": "node scripts/make-semantic-cases.mjs",
+    "test:memory": "node scripts/test-memory3.mjs",
+    "migrate:memory": "node scripts/migrate-memory3.mjs",
+    "test:corpus": "node scripts/test-corpus.mjs",
+    "test:interest": "node scripts/test-interest.mjs",
+    "test:mood": "node scripts/test-mood.mjs",
+    "test:qq": "node scripts/test-qq.mjs",
+    "test:tools": "node scripts/test-tools.mjs"
+  },
+  "files": [
+    "tools.js",
+    "index.js",
+    "voice.js",
+    "panel.js",
+    "qq.js",
+    "lib/",
+    "assets/",
+    "data/character.json",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ]
+}

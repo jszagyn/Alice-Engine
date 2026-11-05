@@ -1,0 +1,18 @@
+爱丽丝（Alice）
+Copyright © 2026 jszagyn
+
+本项目采用双许可证：
+
+1. 代码（lib/、tools.js、index.js、panel.js、voice.js、qq.js、assets/、scripts/、cordis.patch.yml、icon.svg 等）
+   → Apache License 2.0（见 LICENSE）
+
+2. 人格设定与文档（data/character.json、docs/ 下所有内容）
+   → Creative Commons Attribution 4.0（见 LICENSE-PERSONA）
+   → 使用、演绎这部分内容时，必须保留原作者署名。
+
+致谢（概念借鉴，无代码复制）：
+- dsh-fish (MIT) —— 拒绝与拒绝后悔
+- dsh-fish-soul (MIT) —— 情绪→说话行为映射、情感记忆
+- Open-LLM-VTuber / EchoBot —— 全链路与模块化架构思路
+- GPT-SoVITS (MIT) —— TTS 引擎（需用户自备）
+- 人格原型灵感：《魔法使之夜》「久远寺有珠」（仅借"安静克制+少女心"性格气质，非角色设定）

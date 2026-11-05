@@ -1,0 +1,46 @@
+# === 私人数据：绝不入库 ===
+# 运行时日志（对话记录、记忆、情绪、计划，全是私人的）
+character/data/*.jsonl
+character/data/state.json
+character/data/memory.json
+character/data/profile.json
+character/data/self.json
+character/data/stance.json
+character/data/feelings.json
+character/data/interest.json
+character/data/corpus.json
+character/data/corpus.jsonl
+character/data/mood.json
+character/data/mood.jsonl
+character/data/diary.json
+character/data/digest.json
+character/data/episodic.json
+character/data/feed.json
+character/data/exemplars.json
+character/data/brief.json
+character/data/seen.json
+character/data/speakup.json
+character/data/roam.json
+character/data/last-session.json
+character/data/roam-task.md
+character/data/backups/
+character/data/eval/
+# 投喂区（master 的稿子，运行时创建，别入库）
+/alice/
+youzhu/
+
+# === 密钥 / 本地配置 ===
+.env
+.env.local
+*.key
+*.token
+config.local.json
+
+# === 依赖 / 临时 ===
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+
+# 但 character.json（人格）要保留
+!character/data/character.json

@@ -1,0 +1,46 @@
+# 爱丽丝：角色会话的 agent preset。
+# 人格与状态由 @alice/dsh-character 在 preset 作用域内注册：
+#   - deployment:persona-prefix（order 0） 身份、价值观、说话方式
+#   - deployment:persona-suffix（order 10200）能力使用方式
+#   - character:state（context, order 300）每轮状态块
+# 工具只保留：看新鲜事（web）、看图（read_image）。没有 shell、没有写文件。
+# 另有两个宿主作用域的页面外挂：
+#   - 声音桥：/dsh-character/voice-client.js 注入页面，用浏览器自带语音念她的回复（voice.js）
+#   - 记忆面板：/dsh-character/panel-client.js，右下角「记」按钮，能确认/删除/补一条（panel.js）
+# 以及一个协议桥（不注入页面）：
+#   - QQ 桥：POST /dsh-character/qq/event 收 NapCat 的上报，出站调 NapCat 的 HTTP API（qq.js）
+- insert:
+    - id: character-voice
+      name: '@alice/dsh-character/voice'
+    - id: character-panel
+      name: '@alice/dsh-character/panel'
+    - id: character-qq
+      name: '@alice/dsh-character/qq'
+    - id: preset-companion
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: companion
+        name: 爱丽丝
+        description: 一个有自己主意的 AI，会聊新鲜事，也会反驳你
+        order: 4
+        plugins:
+          - id: character-core
+            name: '@alice/dsh-character'
+          # 只看 alice/ 的两个窄口工具（alice_list / alice_read）。
+          # 没有它，她只有 web + read_image，看不了 master 的稿子。
+          - id: character-tools
+            name: '@alice/dsh-character/tools'
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: false
+              readImage: true
+              write: false
+              edit: false
