@@ -34,9 +34,9 @@
 .\scripts\install.ps1
 ```
 
-脚本会：检测 DSH → 复制插件 → 引导填 LLM key → （可选）配 QQ → 启动验证。
+脚本会：检测 DSH → 把插件 link 进 profile → 提示在 DSH 里配 LLM。
 
-macOS / Linux 用 `scripts/install.sh`（待补）。
+macOS / Linux 用 `scripts/install.sh`。
 
 ### 手动安装
 
@@ -44,19 +44,12 @@ macOS / Linux 用 `scripts/install.sh`（待补）。
 
 ## 配置
 
-把 `.env.example` 复制成 `.env` 并填：
+**LLM 在 DSH 里配置**（provider + API key），本插件不自带密钥：
 
-```env
-# LLM 服务（OpenAI 兼容）
-LLM_PROVIDER=deepseek-official
-LLM_BASE_URL=https://api.deepseek.com/v1
-LLM_API_KEY=你的key
-LLM_MODEL=deepseek-chat
+1. 在 DSH 的设置里填好 LLM 服务（provider / base_url / API key）；
+2. 想改插件用的**模型或参数**，编辑 `character/data/character.json` 里的 `planner` / `memory` 配置（`provider`、`model`、`temperature` 等）。
 
-# QQ（可选，NapCat OneBot11）
-QQ_ENABLED=false
-QQ_HTTP=http://127.0.0.1:3000
-```
+QQ（可选）：NapCat OneBot11，在 DSH 里配。
 
 ## TTS（可选，需自备）
 

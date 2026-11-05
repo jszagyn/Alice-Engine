@@ -1,4 +1,4 @@
-# 爱丽丝（Alice）一键安装脚本
+﻿# 爱丽丝（Alice）一键安装脚本
 # 前提：已安装 DeepSeek Harness（DSH），且用 pnpm 管理 profile 依赖
 
 param([string]$Profile = '')
@@ -56,24 +56,16 @@ if (-not $Profile -or -not (Test-Path $Profile)) {
     }
 }
 
-# ── 2. 配置 .env（LLM key）──
-Write-Host ''
-$key = Read-Host '请输入你的 LLM API Key（回车跳过，之后手动改 .env）'
-if ($key) {
-    $envPath = Join-Path $repo '.env'
-    $envContent = "LLM_PROVIDER=deepseek-official`nLLM_BASE_URL=https://api.deepseek.com/v1`nLLM_API_KEY=$key`nLLM_MODEL=deepseek-chat`n"
-    [System.IO.File]::WriteAllText($envPath, $envContent, $utf8)
-    Write-Host '已写 .env'
-}
-
-# ── 3. 完成 ──
+# ── 2. 完成 ──
 Write-Host ''
 Write-Host '=============================================='
 Write-Host '  安装完成'
 Write-Host '=============================================='
 Write-Host '下一步：'
-Write-Host '  1. 启动 DSH'
-Write-Host '  2. 在 DSH 里加载「爱丽丝」companion preset'
-Write-Host '  3. 跟她聊天'
+Write-Host '  1. 在 DSH 的设置里配置 LLM（provider / API key）'
+Write-Host '  2. 启动 DSH'
+Write-Host '  3. 在 DSH 里加载「爱丽丝」companion preset'
+Write-Host '  4. 跟她聊天'
 Write-Host ''
+Write-Host '改人格/模型：编辑 character/data/character.json'
 Write-Host 'TTS（可选）：需要自备 GPT-SoVITS，见 README.md'
