@@ -1,76 +1,85 @@
-# 爱丽丝（Alice）
+# Alice Engine
 
-一个"安静克制、内心少女心"的 AI 伴侣，基于 DeepSeek Harness（DSH）的角色插件。
+**Build an AI Being, Not Just a Chatbot.**
 
-> 表层话不多、不过度热情、有分寸；内心好奇、被夸会嘴硬、偶尔漏一句软话。情绪不跟着你走，有她自己的立场。
+Alice Engine is an open-source, lightweight framework for building personality-driven AI beings. Instead of a wall of prompt text plus a long conversation history, it splits personality, emotion, memory, behavior, and expression into **independent, interconnected systems** — so an AI keeps a consistent self over time.
 
-## 作者
+> A companion named Alice ships as the reference implementation: outwardly quiet and restrained, inwardly curious with a girlish heart — her emotions are her own, and she doesn't mirror yours.
 
-© 2026 jszagyn
+## ✨ Why not just a character prompt?
 
-如果你喜欢爱丽丝，欢迎在衍生作品或宣传中提及原作者。
+Most "AI characters" are one long system prompt. Alice Engine separates the concerns so personality doesn't collapse as the context grows:
 
-## 特性
+| System | What it does |
+|---|---|
+| **Personality** | Stable traits and voice, stored as a structured source file (`character.json`) — change it without touching code |
+| **Emotion** | A live 5-axis state (pleasure / arousal / frustration / curiosity / affinity) that decays, couples, and points at things |
+| **Appraisal** | Rule + LLM evaluation of what each turn *meant*, driving emotion deltas |
+| **Memory** | Multi-layered: short-term episodes, long-term slots, self-model, stances, events, feelings, interests |
+| **Behavior** | Decides *intent* — answer / ask / explore / refuse / change topic — before the model writes |
+| **Expression** | Three orthogonal layers: **content** (how much to say) · **emotion** (how much feeling) · **tone** (always-on voice) |
+| **Self-improvement** | Replies are self-scored and distilled into examples that shape future replies |
 
-- **人格源文件驱动**：改 `character.json` 就能改人格，不碰代码；
-- **四层架构**：内容层（说什么）+ 情绪层（带多少情绪）+ 语气层（怎么说）三层正交，语气是始终在线的底子；
-- **五维情绪**：愉悦/激活 + 挫败/好奇/社交亲和，有衰减、有惯性；
-- **记忆**：短期对话 + 长期槽位 + 情感记忆 + 自我模型 + 立场；
-- **优化闭环**：回复自动打分、沉淀好/坏样例，越用越像她；
-- **主动**：漫游（网上看新鲜事）、主动搭话；
-- **投喂区**：把你写的稿子放进 `alice/` 文件夹，她能翻看、概括、引用。
+## 🧠 Architecture
 
-## 快速开始（一键安装）
-
-### 前提
-
-1. 装好 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness)（本项目的运行时）；
-2. 一个 LLM 服务（DeepSeek API，或其他 OpenAI 兼容接口）。
-
-### 安装（Windows）
-
-```powershell
-# 在仓库根目录运行
-.\scripts\install.ps1
+```
+┌─ Expression: content · emotion · tone (three orthogonal layers)
+├─ Behavior: intent → mode / move / plan
+├─ Memory: episodic · slots · self · stance · events · feelings
+├─ Emotion: 5-axis state with decay, coupling, object tags
+└─ Appraisal: rules + LLM → emotional deltas
 ```
 
-脚本会：检测 DSH → 把插件 link 进 profile → 提示在 DSH 里配 LLM。
+The design goal is **personality continuity that doesn't depend on a giant conversation history** — state and memory carry the self, not the prompt.
 
-macOS / Linux 用 `scripts/install.sh`。
+## 🚀 Quick Start
 
-### 手动安装
+**Prerequisite:** [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) + an LLM service (DeepSeek API or any OpenAI-compatible endpoint).
 
-把 `character/` 目录复制（或软链）到 DSH 的插件目录，然后在 `character/data/` 下放好 `character.json`（已含默认人格），并配置 LLM。
+```powershell
+# Windows
+.\scripts\install.ps1
+```
+```bash
+# macOS / Linux
+./scripts/install.sh
+```
 
-## 配置
+The script links the plugin into your DSH profile. Then: configure your LLM inside DSH → load the **Alice** companion preset → start talking.
 
-**LLM 在 DSH 里配置**（provider + API key），本插件不自带密钥：
+**Configuration:** LLM provider + API key live in DSH's settings. Model parameters (`provider`, `model`, `temperature`) live in `character/data/character.json`.
 
-1. 在 DSH 的设置里填好 LLM 服务（provider / base_url / API key）；
-2. 想改插件用的**模型或参数**，编辑 `character/data/character.json` 里的 `planner` / `memory` 配置（`provider`、`model`、`temperature` 等）。
+## 📁 Repository
 
-QQ（可选）：NapCat OneBot11，在 DSH 里配。
+- `character/` — the plugin (personality, engine, memory, behavior, tools)
+- `docs/` — personality design, architecture, roadmap
+- `scripts/` — one-click installers
 
-## TTS（可选，需自备）
+## 🚧 Roadmap
 
-爱丽丝支持本地 GPT-SoVITS 语音（默认关闭）。引擎代码开源（MIT），但**预训练模型与参考音频需自备**——不随本仓库分发。
+See [docs/计划.md](docs/计划.md) for the detailed plan. Summary:
 
-## 许可（双许可）
+- ✅ Personality / emotion / appraisal / multi-layer memory / behavior / expression
+- ✅ Self-improvement loop, roaming, proactive speaking, a personal feed folder she can read and summarize
+- 🚧 Text-to-Speech (GPT-SoVITS, bring your own model & voice)
+- 🚧 Live2D / VRM avatar
+- 🚧 More channels (voice input, richer QQ features)
 
-- **代码**：Apache License 2.0（见 [LICENSE](LICENSE)）；
-- **人格设定 + 文档**：CC BY 4.0（见 [LICENSE-PERSONA](LICENSE-PERSONA)）——用这部分**必须署名原作者**。
+## 🤝 Contributing
 
-## 致谢 / 参考
+Ideas, experiments, and feedback are welcome — AI architecture, emotional modeling, memory, TTS, avatars, or evaluation.
 
-概念借鉴（无代码复制）：
+## 📜 License
 
-- [dsh-fish](https://github.com/ssamurias/dsh-fish)（MIT）——拒绝与拒绝后悔；
-- [dsh-fish-soul](https://github.com/Britneycode/dsh-fish-soul)（MIT）——情绪→说话行为映射、情感记忆；
-- [Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber) / [EchoBot](https://github.com/KdaiP/EchoBot)——全链路与模块化架构思路；
-- [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（MIT）——TTS 引擎（需自备）；
+Dual-licensed:
 
-## 文档
+- **Code** (`lib/`, `tools.js`, `scripts/`, etc.): [Apache License 2.0](LICENSE)
+- **Personality & docs** (`character.json`, `docs/`): [CC BY 4.0](LICENSE-PERSONA) — **attribution required**
 
-- `docs/人格设计.md` —— 人格定性与语气；
-- `docs/架构.md` —— 四层架构与模块说明；
-- `docs/计划.md` —— 设计与迭代计划。
+## 🙏 Acknowledgements
+
+Conceptual inspiration (no code copied): [dsh-fish](https://github.com/ssamurias/dsh-fish), [dsh-fish-soul](https://github.com/Britneycode/dsh-fish-soul), [Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber), [EchoBot](https://github.com/KdaiP/EchoBot), [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS).
+
+---
+
+**Alice Engine — Building AI beings with continuity.**
