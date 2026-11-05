@@ -27,7 +27,6 @@ character/data/backups/
 character/data/eval/
 # 投喂区（master 的稿子，运行时创建，别入库）
 /alice/
-youzhu/
 
 # === 密钥 / 本地配置 ===
 .env

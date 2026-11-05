@@ -75,7 +75,6 @@ QQ_HTTP=http://127.0.0.1:3000
 - [dsh-fish-soul](https://github.com/Britneycode/dsh-fish-soul)（MIT）——情绪→说话行为映射、情感记忆；
 - [Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber) / [EchoBot](https://github.com/KdaiP/EchoBot)——全链路与模块化架构思路；
 - [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（MIT）——TTS 引擎（需自备）；
-- 人格原型灵感：《魔法使之夜》「久远寺有珠」（仅借"安静克制 + 少女心"性格气质，非角色设定）。
 
 ## 文档
 
