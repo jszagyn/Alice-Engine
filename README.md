@@ -54,6 +54,16 @@ The script links the plugin into your DSH profile. Then: configure your LLM insi
 - `character/` — the plugin (personality, engine, memory, behavior, tools)
 - `docs/` — personality design, architecture, roadmap
 - `scripts/` — one-click installers
+- `samples/` — example TTS voice (CC0)
+
+## 🔊 TTS (optional)
+
+Alice supports local TTS via [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) — **optional**:
+
+- Disabled by default (`character.json` → `tts.enabled: false`); the plugin works normally without it (falls back to browser text-to-speech).
+- To enable: run a GPT-SoVITS `api_v2` server → set `tts.enabled: true` + fill `tts.refAudio` + `tts.promptText` → restart DSH.
+
+**Example voice (CC0):** `samples/example-voice.mp3` is a demo generated with [Piper](https://github.com/rhasspy/piper) using the `zh_CN-chaowen-medium` voice, licensed **CC0** (public domain). Use it freely, or bring your own reference audio (3–10s) + matching text.
 
 ## 🚧 Roadmap
 
@@ -61,7 +71,7 @@ See [docs/计划.md](docs/计划.md) for the detailed plan. Summary:
 
 - ✅ Personality / emotion / appraisal / multi-layer memory / behavior / expression
 - ✅ Self-improvement loop, roaming, proactive speaking, a personal feed folder she can read and summarize
-- 🚧 Text-to-Speech (GPT-SoVITS, bring your own model & voice)
+- ✅ Text-to-Speech (optional GPT-SoVITS, bring your own model & voice)
 - 🚧 Live2D / VRM avatar
 - 🚧 More channels (voice input, richer QQ features)
 

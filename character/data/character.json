@@ -125,5 +125,13 @@
     "replyDelayMs": 1500,
     "maxChunk": 120,
     "maxPerHour": 40
+  },
+  "tts": {
+    "enabled": false,
+    "api": "http://127.0.0.1:9880",
+    "refAudio": "",
+    "promptText": "",
+    "promptLang": "zh",
+    "textLang": "zh"
   }
 }

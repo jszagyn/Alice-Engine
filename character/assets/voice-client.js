@@ -79,6 +79,26 @@
     if (!enabled || speaking) return
     const next = pending.shift()
     if (!next) return
+
+    if (next.audio) {
+      // TTS 合成好了：直接播合成音频，不用系统语音。
+      speaking = true
+      const audio = new Audio(`/dsh-character/voice/audio?id=${next.id}`)
+      audio.onended = () => {
+        speaking = false
+        speakNext()
+      }
+      audio.onerror = () => {
+        speaking = false
+        speakNext()
+      }
+      audio.play().catch(() => {
+        speaking = false
+        speakNext()
+      })
+      return
+    }
+
     const text = String(next.text ?? '').slice(0, MAX_CHARS).trim()
     if (text.length < 2) return speakNext()
 

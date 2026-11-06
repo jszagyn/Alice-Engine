@@ -8,8 +8,10 @@ const MAX_ITEMS = 200
 const MAX_AGE_MS = 60 * 60_000
 
 let seq = 0
-/** @type {{ id: number, at: number, kind: string, text: string }[]} */
+/** @type {{ id: number, at: number, kind: string, text: string, audio: boolean }[]} */
 const queue = []
+/** @type {Map<number, Buffer>} 合成音频（id → wav 字节） */
+const audioStore = new Map()
 
 /** 去掉不该念出来的东西：代码块、行内代码、链接地址、markdown 记号。 */
 export function speakable(text) {
@@ -23,15 +25,24 @@ export function speakable(text) {
     .trim()
 }
 
-export function pushVoice(text, kind = 'chat') {
+export function pushVoice(text, kind = 'chat', audio = null) {
   const clean = speakable(text)
   if (clean.length < 2) return null
   seq += 1
-  const item = { id: seq, at: Date.now(), kind, text: clean.slice(0, 600) }
+  const item = { id: seq, at: Date.now(), kind, text: clean.slice(0, 600), audio: Boolean(audio) }
+  if (audio) audioStore.set(seq, audio)
   queue.push(item)
   const cutoff = Date.now() - MAX_AGE_MS
-  while (queue.length > MAX_ITEMS || (queue[0] && queue[0].at < cutoff)) queue.shift()
+  while (queue.length > MAX_ITEMS || (queue[0] && queue[0].at < cutoff)) {
+    const dropped = queue.shift()
+    if (dropped?.audio) audioStore.delete(dropped.id)
+  }
   return item
+}
+
+/** 取一条的合成音频（Buffer），没有就返回 null。 */
+export function getAudio(id) {
+  return audioStore.get(id) ?? null
 }
 
 /** 浏览器端轮询：只要比 since 新的。 */

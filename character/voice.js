@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
 
-import { pendingSince } from './lib/voiceBus.js'
+import { pendingSince, getAudio } from './lib/voiceBus.js'
 
 export const name = 'character-voice'
 export const inject = ['webServer']
@@ -39,6 +39,29 @@ export function apply(ctx) {
           'Cache-Control': 'no-store',
         })
         res.end(body)
+      },
+    }),
+  )
+
+  disposers.push(
+    ctx.webServer.register({
+      kind: 'exact',
+      path: '/dsh-character/voice/audio',
+      handler: (req, res) => {
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const id = Number(url.searchParams.get('id') ?? 0)
+        const audio = getAudio(Number.isFinite(id) ? id : 0)
+        if (!audio) {
+          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+          res.end('not found')
+          return
+        }
+        res.writeHead(200, {
+          'Content-Type': 'audio/wav',
+          'Content-Length': audio.length,
+          'Cache-Control': 'no-store',
+        })
+        res.end(audio)
       },
     }),
   )

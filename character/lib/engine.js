@@ -79,6 +79,8 @@ import {
   saveState,
 } from './state.js'
 
+import { synthesize } from './tts.js'
+
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const APPRAISAL_LOG = join(DATA_DIR, 'appraisal.jsonl')
 
@@ -791,7 +793,14 @@ export function createEngine(ctx) {
       const reply = rawReply.replace(/\s*。\s*$/, '').trim() || rawReply.trim()
 
       // 声音桥：把这一句放进总线，浏览器端的朗读脚本会取走（她说完就念）。
-      pushVoice(reply, slot.kind ?? 'chat')
+      // TTS：启用时先合成音频再推进总线（合成失败自动回退到浏览器朗读）。
+      if (character.tts?.enabled) {
+        synthesize(reply, character.tts, state.emotionLevel ?? '中').then((audio) => {
+          pushVoice(reply, slot.kind ?? 'chat', audio || null)
+        })
+      } else {
+        pushVoice(reply, slot.kind ?? 'chat')
+      }
 
       const result = criticize(reply, slot.plan, {
         previousEndedWithQuestion: Boolean(slot.lastEndedWithQuestion),
