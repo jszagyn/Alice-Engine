@@ -2,6 +2,8 @@
 
 **Build an AI Being, Not Just a Chatbot.**
 
+> 中文版见 [README_zh.md](README_zh.md) · For the full design philosophy, see [docs/DESIGN.md](docs/DESIGN.md).
+
 Alice Engine is an open-source, lightweight framework for building personality-driven AI beings. Instead of a wall of prompt text plus a long conversation history, it splits personality, emotion, memory, behavior, and expression into **independent, interconnected systems** — so an AI keeps a consistent self over time.
 
 > A companion named Alice ships as the reference implementation: outwardly quiet and restrained, inwardly curious with a girlish heart — her emotions are her own, and she doesn't mirror yours.
