@@ -18,7 +18,7 @@ Most "AI characters" are one long system prompt. Alice Engine separates the conc
 | **Emotion** | A live 5-axis state (pleasure / arousal / frustration / curiosity / affinity) that decays, couples, and points at things |
 | **Appraisal** | Rule + LLM evaluation of what each turn *meant*, driving emotion deltas |
 | **Memory** | Multi-layered: short-term episodes, long-term slots, self-model, stances, events, feelings, interests |
-| **Behavior** | Decides *intent* — answer / ask / explore / refuse / change topic — before the model writes |
+| **Behavior** | Decides *intent* — 9 modes + 6 moves (answer / ask / digress / refuse / look up / say less) — before the model writes |
 | **Expression** | Three orthogonal layers: **content** (how much to say) · **emotion** (how much feeling) · **tone** (always-on voice) |
 | **Self-improvement** | Replies are self-scored and distilled into examples that shape future replies |
 

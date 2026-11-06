@@ -20,7 +20,7 @@ Prompts get pushed out of the context window. State does not. Alice's continuity
 
 This is the design we like best. Many projects blur "how much to say", "how much feeling to show", and "how to sound" into one knob, so the moment mood drops, the character turns into an information-spitting machine. We split them:
 
-- **Content layer** — how much to say: expert, discuss, simple, minimal; it also picks the move: answer, ask, digress, or look something up first.
+- **Content layer** — how much to say: expert, discuss, simple, minimal (four levels).
 - **Emotion layer** — how much feeling, and only the intensity.
 - **Voice layer** — how she sounds, always on: short sentences, colloquial, no trailing period; particles follow context naturally — no fixed list, never forced.
 
