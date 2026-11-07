@@ -117,10 +117,8 @@
     "apiBase": "http://127.0.0.1:3000",
     "token": "dsh-qq-local",
     "secret": "",
-    "selfId": "3204141435",
-    "allowUsers": [
-      "944624695"
-    ],
+    "selfId": "",
+    "allowUsers": [],
     "allowGroups": [],
     "replyDelayMs": 1500,
     "maxChunk": 120,

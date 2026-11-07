@@ -105,7 +105,17 @@ function longestCommon(a, b) {
 }
 
 export function loadCharacter() {
-  return JSON.parse(readFileSync(join(PACKAGE_ROOT, 'data', 'character.json'), 'utf8'))
+  const character = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'data', 'character.json'), 'utf8'))
+  // 人格/语气可从 persona/*.md 覆盖（无编程自定义：改这两个文件，重启即生效）
+  try {
+    const persona = join(PACKAGE_ROOT, '..', 'persona', '人格.md')
+    if (existsSync(persona)) character.layers.core = readFileSync(persona, 'utf8').trim()
+  } catch {}
+  try {
+    const voice = join(PACKAGE_ROOT, '..', 'persona', '语气.md')
+    if (existsSync(voice)) character.layers.voice = readFileSync(voice, 'utf8').trim()
+  } catch {}
+  return character
 }
 
 // 只应一声的语气词才值得跳过内容层：「晚上好」这种是要接话的，不能省。
