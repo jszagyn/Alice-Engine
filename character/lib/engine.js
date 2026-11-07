@@ -8,7 +8,7 @@ import { appraise } from './appraise.js'
 import { composeBrief, dayKey, idleMsSince, loadBrief, saveBrief, shouldBrief, touchActivity } from './brief.js'
 import { pushVoice } from './voiceBus.js'
 import { criticize, logCritic } from './critic.js'
-import { judgeReplyBinary } from './llmCritic.js'
+import { judgeTone } from './llmCritic.js'
 import { loadDiary, renderDiary, saveDiary, writeDiaryLine } from './diary.js'
 import { loadExemplars, recordExemplar } from './exemplars.js'
 import { addFeedItems, extractFeedItems, loadFeed, markFeedUsed, renderFeed } from './feed.js'
@@ -385,6 +385,30 @@ export function createEngine(ctx) {
               emotion: state.emotionLevel,
             })
           : '',
+    }),
+  )
+
+  // 正反馈层：把攒下来的好例子喂回下一轮，让语气越用越像，而不是每轮靠 voice 硬纠。
+  // 好例子当样板（照味道，别照抄原句），坏例子带原因提醒（别重犯）。
+  ctx.effect(() =>
+    ctx.systemPrompt.context({
+      name: 'character:exemplars',
+      order: 302,
+      text: () => {
+        const good = (exemplars?.good ?? []).slice(0, 3).filter((g) => g?.reply)
+        const bad = (exemplars?.bad ?? []).slice(0, 2).filter((b) => b?.reply)
+        if (!good.length && !bad.length) return ''
+        const lines = []
+        if (good.length) {
+          lines.push('你之前这样说，是对的（照这个味道说，别照抄原句）：')
+          for (const g of good) lines.push(`- 「${g.reply}」`)
+        }
+        if (bad.length) {
+          const why = bad.map((b) => (b.reasons?.length ? b.reasons.join('、') : '')).filter(Boolean).join('；')
+          lines.push(why ? `你之前这样说岔了，别再犯（因为：${why}）` : '你之前有几次说岔了，别再那样说。')
+        }
+        return lines.join('\n')
+      },
     }),
   )
 
@@ -864,19 +888,6 @@ export function createEngine(ctx) {
         verdict: result.verdict,
         reasons: result.reasons,
       })
-      exemplars = recordExemplar(exemplars, {
-        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-        at: new Date().toISOString(),
-        user: slot.user.slice(0, 200),
-        reply: reply.slice(0, 600),
-        verdict: result.verdict,
-        reasons: result.reasons,
-        missingPoints: result.missingPoints,
-        chars: result.chars,
-        kind,
-        source: 'auto',
-        confidence: 0.7,
-      })
 
       // 语料吸收：真用上的词记一次使用；被 critic 判「语料腔」就记一次错，
       // 记错两次的词退役，别让她把网上学的词当成口头禅。
@@ -891,13 +902,38 @@ export function createEngine(ctx) {
         saveCorpus(corpus)
       }
 
-      // LLM 判别二分项：规则 critic 抓「明显违规」，这里异步补软性判定（说教/讨好/跑题/分析腔）。
+      // 语气层 LLM 判定：两维强制判（太AI / 不符合人格），结果决定好/坏例子进不进 exemplars。
+      // 规则 critic 抓硬违规，这里异步补软判；合并成最终 verdict 再记录（LLM 失败则用规则兜底）。
+      const commitExemplar = (verdict, reasons) => {
+        exemplars = recordExemplar(exemplars, {
+          id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          at: new Date().toISOString(),
+          user: slot.user.slice(0, 200),
+          reply: reply.slice(0, 600),
+          verdict,
+          reasons,
+          missingPoints: result.missingPoints,
+          chars: result.chars,
+          kind,
+          source: 'auto',
+          confidence: verdict === 'good' ? 0.85 : 0.7,
+        })
+      }
       if (llm && reply.trim().length >= 4) {
-        judgeReplyBinary(llm, character, { user: slot.user, reply })
-          .then(({ flags }) => {
-            if (flags.length) logRoamDebug({ at: new Date().toISOString(), result: 'llm-critic-flag', flags })
+        judgeTone(llm, character, { user: slot.user, reply })
+          .then(({ tooAi, fitsPersona, error }) => {
+            if (error || tooAi === null || fitsPersona === null) {
+              commitExemplar(result.verdict, result.reasons)
+              return
+            }
+            if (tooAi) commitExemplar('bad', ['太AI'])
+            else if (!fitsPersona) commitExemplar('bad', ['不符合人格'])
+            else if (result.reasons.length) commitExemplar('bad', result.reasons)
+            else commitExemplar('good', [])
           })
-          .catch(() => {})
+          .catch(() => commitExemplar(result.verdict, result.reasons))
+      } else {
+        commitExemplar(result.verdict, result.reasons)
       }
 
       // 情绪 2.0：这一轮结束再判她情绪怎么动。异步跑，不拖慢回复；
