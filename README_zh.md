@@ -67,6 +67,13 @@ Alice 支持本地 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 语音�
 
 **示例音色（CC0）**：`samples/example-voice.mp3` 用 [Piper](https://github.com/rhasspy/piper) 的 `zh_CN-chaowen-medium` 生成，**CC0 公共领域**，可随便用；或自备参考音频（3–10 秒）+ 对应文字。
 
+## 🎨 形象素材
+
+- `assets/alice.png` — 爱丽丝形象图（Q 版 2D 立绘）；
+- `assets/alice-layered.psd` — 手绘 Live2D 分层素材（分层源文件）。
+
+**授权**：作者完全手绘，但风格与模型比例上有所参考；**仅供交流学习，不提供任何商业授权**。详见 [assets/NOTICE.md](assets/NOTICE.md)。
+
 ## 🚧 计划
 
 详见 [docs/计划.md](docs/计划.md)，摘要：
@@ -87,6 +94,7 @@ Alice 支持本地 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 语音�
 
 - **代码**（`lib/`、`tools.js`、`scripts/` 等）：[Apache License 2.0](LICENSE)
 - **人格与文档**（`character.json`、`docs/`）：[CC BY 4.0](LICENSE-PERSONA) —— 需署名
+- **形象素材**（`assets/`）：仅供交流学习，不提供商业授权 —— 见 [assets/NOTICE.md](assets/NOTICE.md)
 
 ## 🙏 致谢
 
