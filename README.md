@@ -67,6 +67,13 @@ Alice supports local TTS via [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS
 
 **Example voice (CC0):** `samples/example-voice.mp3` is a demo generated with [Piper](https://github.com/rhasspy/piper) using the `zh_CN-chaowen-medium` voice, licensed **CC0** (public domain). Use it freely, or bring your own reference audio (3–10s) + matching text.
 
+## 🎨 Image Assets
+
+- `assets/alice.png` — Alice's portrait (chibi 2D illustration);
+- `assets/alice-layered.psd` — hand-drawn Live2D layered source (PSD).
+
+**License:** hand-drawn by the author, with stylistic/proportion references. **For learning and exchange only — no commercial authorization.** See [assets/NOTICE.md](assets/NOTICE.md).
+
 ## 🚧 Roadmap
 
 See [docs/计划.md](docs/计划.md) for the detailed plan. Summary:
@@ -87,6 +94,7 @@ Dual-licensed:
 
 - **Code** (`lib/`, `tools.js`, `scripts/`, etc.): [Apache License 2.0](LICENSE)
 - **Personality & docs** (`character.json`, `docs/`): [CC BY 4.0](LICENSE-PERSONA) — **attribution required**
+- **Image assets** (`assets/`): for learning and exchange only, no commercial authorization — see [assets/NOTICE.md](assets/NOTICE.md)
 
 ## 🙏 Acknowledgements
 
