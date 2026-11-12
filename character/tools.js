@@ -14,8 +14,10 @@
 // 手写的 JSON Schema 定义，够用。
 
 import { readFile, readdir, realpath, stat } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { loadRoam, toggleRoam } from './lib/roam.js'
 
 export const name = 'character-tools'
 export const inject = ['tools']
@@ -239,7 +241,137 @@ export function setReadHook(fn) {
   readHook = typeof fn === 'function' ? fn : null
 }
 
+const roamToggleDefinition = {
+  name: 'roam_toggle',
+  description:
+    '开关她的漫游（自由活动）。开=三分钟没人说话她就自己上网逛、给你发一条见闻；关=停。每次打开重新计费（预算 5 块，花完自动停）。',
+  parameters: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      on: { type: 'boolean', description: 'true=开漫游，false=关漫游。' },
+    },
+    required: ['on'],
+  },
+  output: {
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['toggle', 'cost', 'budget'],
+      properties: {
+        toggle: { type: 'boolean' },
+        cost: { type: 'number' },
+        budget: { type: 'number' },
+      },
+    },
+    render: (_args, value) => [
+      {
+        type: 'text',
+        text: value.toggle
+          ? `漫游已开。三分钟不说话我就自己去逛逛；预算 ${value.budget} 块，已花 ${value.cost} 块。`
+          : '漫游已关。',
+      },
+    ],
+  },
+  timeoutMs: 10_000,
+  isConcurrencySafe: () => true,
+  execute(args) {
+    const roam = loadRoam()
+    toggleRoam(roam, Boolean(args?.on))
+    return { toggle: roam.toggle, cost: roam.cost ?? 0, budget: 5 }
+  },
+}
+
+const IMAGE_MEDIA = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+}
+
+/** 看 alice/ 里的图片：读文件 → 提交附件 → 返回图片内容块（照 read_image 的格式）。 */
+function makeImageTool(ctx) {
+  return {
+    name: 'alice_image',
+    description:
+      '看 alice/ 文件夹里的一张图片（png/jpg/webp/gif）。只能看 alice/ 里的，别的目录看不到。',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        path: { type: 'string', description: '相对 alice/ 的图片路径，例如 "writings/创作1/角色/设定图.png"。' },
+      },
+      required: ['path'],
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['path', 'image'],
+        properties: {
+          path: { type: 'string' },
+          image: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['attachmentId', 'mediaType', 'bytes', 'width', 'height'],
+            properties: {
+              attachmentId: { type: 'string' },
+              mediaType: { type: 'string' },
+              bytes: { type: 'number' },
+              width: { type: 'number' },
+              height: { type: 'number' },
+              name: { type: 'string' },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [
+        { type: 'text', text: `《${value.path}》${value.image.width}×${value.image.height}` },
+        {
+          type: 'image',
+          attachment: {
+            attachmentId: value.image.attachmentId,
+            mediaType: value.image.mediaType,
+            bytes: value.image.bytes,
+            width: value.image.width,
+            height: value.image.height,
+          },
+        },
+      ],
+    },
+    timeoutMs: 30_000,
+    isConcurrencySafe: () => true,
+    async execute(args) {
+      const target = await safePath(args?.path)
+      const info = await stat(target)
+      if (!info.isFile()) throw new Error(`这不是文件：${args?.path}`)
+      const mediaType = IMAGE_MEDIA[extname(target).toLowerCase()]
+      if (!mediaType) throw new Error('只支持 png/jpg/webp/gif 图片')
+      const data = await readFile(target)
+      const attachments = ctx.get('attachments')
+      if (!attachments) throw new Error('当前环境没有图片服务')
+      const ref = await attachments.saveImage({ data, mediaType, name: basename(target) })
+      return {
+        path: display(target),
+        image: {
+          attachmentId: ref.attachmentId,
+          mediaType: ref.mediaType,
+          bytes: ref.bytes,
+          width: ref.width,
+          height: ref.height,
+        },
+      }
+    },
+  }
+}
+
 export function apply(ctx) {
   ctx.tools.register(listDefinition)
   ctx.tools.register(readDefinition)
+  ctx.tools.register(roamToggleDefinition)
+  // 图片工具需要附件存储，注册在 attachments 注入作用域里。
+  ctx.inject(['attachments'], (imageCtx) => {
+    imageCtx.tools.register(makeImageTool(imageCtx))
+  })
 }

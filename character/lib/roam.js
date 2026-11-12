@@ -35,7 +35,7 @@ export function loadRoam() {
   } catch {
     // 文件坏了就从零开始。
   }
-  return { lastRoamAt: null, counts: {} }
+  return { lastRoamAt: null, counts: {}, toggle: false, cost: 0 }
 }
 
 export function saveRoam(roam) {
@@ -54,33 +54,30 @@ function isPeakHour(date) {
   return (hour >= 9 && hour < 12) || (hour >= 14 && hour < 18)
 }
 
-/** 预算闸门：时段窗口 / 高峰避让 / 最小间隔 / 每日上限 / force 调试开关。 */
-export function mayRoam(roam, config) {
-  if (!config?.enabled) return { ok: false, reason: 'disabled' }
+/** 开关闸门：开关开 + 三分钟没聊天 + 花费没到上限，才漫游。 */
+export function mayRoam(roam, config, idleMs = Infinity) {
   if (roam.force) return { ok: true, reason: 'forced', forced: true }
-
-  const now = new Date()
-  const hour = now.getHours()
-  if (hour < config.windowStart || hour >= config.windowEnd) return { ok: false, reason: 'outside-window' }
-  if (config.preferOffpeak && isPeakHour(now)) return { ok: false, reason: 'peak-hours' }
-
-  const since = roam.lastRoamAt ? Date.now() - Date.parse(roam.lastRoamAt) : Number.POSITIVE_INFINITY
-  if (Number.isFinite(since) && since < config.minIntervalHours * 3_600_000) {
-    return { ok: false, reason: 'too-soon' }
-  }
-
-  const today = roam.counts?.[dayKey()] ?? 0
-  if (today >= config.maxPerDay) return { ok: false, reason: 'daily-limit' }
-
-  return { ok: true, reason: 'schedule' }
+  if (!roam.toggle) return { ok: false, reason: 'toggled-off' }
+  if ((roam.cost ?? 0) >= (config.costBudget ?? 5)) return { ok: false, reason: 'budget-spent' }
+  if (!Number.isFinite(idleMs) || idleMs < (config.idleMinutes ?? 3) * 60_000) return { ok: false, reason: 'not-idle' }
+  return { ok: true, reason: 'idle-roam' }
 }
 
-/** 记一次漫游：更新时刻与当日计数，并清掉 force。 */
+/** 开关：开时清零计费，重新计；关了就停。 */
+export function toggleRoam(roam, on) {
+  roam.toggle = Boolean(on)
+  if (on) roam.cost = 0
+  saveRoam(roam)
+  return roam
+}
+
+/** 记一次漫游：更新时刻与当日计数、花费 +1，并清掉 force。 */
 export function recordRoam(roam) {
   const key = dayKey()
   roam.lastRoamAt = new Date().toISOString()
   roam.counts = { ...(roam.counts ?? {}) }
   roam.counts[key] = (roam.counts[key] ?? 0) + 1
+  roam.cost = (roam.cost ?? 0) + 1
   roam.force = false
   saveRoam(roam)
 }

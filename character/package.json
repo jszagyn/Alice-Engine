@@ -13,7 +13,8 @@
     "./voice": "./voice.js",
     "./panel": "./panel.js",
     "./qq": "./qq.js",
-    "./tools": "./tools.js"
+    "./tools": "./tools.js",
+    "./roam-panel": "./roam-panel.js"
   },
   "dsh": {
     "bundle": {
@@ -40,12 +41,14 @@
     "index.js",
     "voice.js",
     "panel.js",
+    "roam-panel.js",
     "qq.js",
     "lib/",
     "assets/",
     "data/character.json",
     "cordis.patch.yml",
     "locale/*.json",
-    "icon.svg"
+    "icon.svg",
+    "stickers/"
   ]
 }

@@ -31,6 +31,7 @@ export function loadState(initial) {
     pressure: 0,
     conflict: null,
     turns: 0,
+    chatStreak: 0,
     updatedAt: new Date().toISOString(),
     lastAppraisal: null,
   }
@@ -58,6 +59,7 @@ export function decay(state) {
   state.frustration = clamp((state.frustration ?? 0.2) * Math.pow(0.5, hours / 3), 0, 1)
   state.curiosity = clamp(0.5 + ((state.curiosity ?? 0.5) - 0.5) * Math.pow(0.5, hours / 8), 0, 1)
   state.affinity = clamp(0.5 + ((state.affinity ?? 0.5) - 0.5) * Math.pow(0.5, hours / 12), 0, 1)
+  if (hours > 0.5) state.chatStreak = 0 // 半小时没聊，聊天热度回落
   state.updatedAt = new Date().toISOString()
   return state
 }
@@ -245,27 +247,40 @@ function conflictLine(state) {
  * 情绪基数 = 他的情绪（E_master）+ 她的兴趣调节（I_self，curiosity 联动）。
  * 话题需求由 contentWeight 映射；需求 > 基数时上浮 + 随机下移 0-2 档（有时够着、有时差一点）。
  */
-export function emotionLevel(hisEmotion, curiosity, contentWeight, rand = Math.random) {
+export function emotionLevel(hisEmotion, curiosity, contentWeight, streak = 0, rand = Math.random) {
   const em = { high: 2, mid: 1, low: 0 }[hisEmotion] ?? 1
   const interest = curiosity >= 0.7 ? 1 : curiosity < 0.4 ? -1 : 0
   const base = clamp(em + interest, 0, 2) // 0=低 1=中 2=高
 
+  let level
   if (contentWeight === 'minimal') {
     // 仅情绪低占比：短打趣偶尔才「只回一个语气词」，多数时候「应一声」（低情绪）。
-    return rand() < 0.3 ? '仅' : '低'
+    level = rand() < 0.3 ? '仅' : '低'
+  } else {
+    const demand = { simple: 0, discuss: 1, expert: 2 }[contentWeight] ?? 1
+    let n = base
+    if (demand === 0 && base > 0) {
+      // 功能查询（simple）：她再兴奋也不硬 high，降一档（查天气就平淡）
+      n = Math.max(0, base - 1)
+    } else if (demand > base) {
+      // 需求 > 供给：上浮一档去够需求，再随机下移 0-2（有时够得着、有时差一点）
+      n = Math.min(demand, base + 1)
+      n = Math.max(0, n - Math.floor(rand() * 3))
+    }
+    level = ['低', '中', '高'][n]
   }
-  const demand = { simple: 0, discuss: 1, expert: 2 }[contentWeight] ?? 1
 
-  let level = base
-  if (demand === 0 && base > 0) {
-    // 功能查询（simple）：她再兴奋也不硬 high，降一档（查天气就平淡）
-    level = Math.max(0, base - 1)
-  } else if (demand > base) {
-    // 需求 > 供给：上浮一档去够需求，再随机下移 0-2（有时够得着、有时差一点）
-    level = Math.min(demand, base + 1)
-    level = Math.max(0, level - Math.floor(rand() * 3))
+  // 连续聊天升温：进入谈话随机从低/中开始（基础 50%），连续聊升温到最高 70%；中→高概率低（最多 12%）。
+  // warm 随 streak 涨（streak/10 封顶 1）；半小时不聊 streak 归零（见 decay）→ 概率回落。
+  const warm = Math.min(1, (streak ?? 0) / 10)
+  const pMid = 0.5 + warm * 0.2
+  if ((level === '低' || level === '仅') && rand() < pMid) {
+    level = '中'
   }
-  return ['低', '中', '高'][level]
+  if (level === '中' && rand() < Math.max(0, warm - 0.6) * 0.3) {
+    level = '高'
+  }
+  return level
 }
 
 const emotionLabel = (level) => ({ 低: '低（平淡）', 中: '中', 高: '高（带劲）', 仅: '仅（一个语气词就够）' })[level] ?? ''

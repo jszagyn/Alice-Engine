@@ -72,7 +72,7 @@ export function recordPick(interest, { tag = '', topic = '', now = Date.now() } 
   const entry = (interest.tags[tag] ??= { score: 0, picks: 0, engaged: 0, lastAt: '' })
   entry.picks = (entry.picks ?? 0) + 1
   entry.lastAt = new Date(now).toISOString()
-  if (topic) entry.lastTopic = String(topic).slice(0, 60)
+  // 只记方向（tag），不记具体内容（topic）——兴趣层别太具体。
   return interest
 }
 
@@ -121,4 +121,32 @@ export function renderInterest(interest, { limit = 4 } = {}) {
   if (liked.length) lines.push(`- 更愿意看：${liked.map(format).join('、')}`)
   if (disliked.length) lines.push(`- 不太想看：${disliked.map(format).join('、')}`)
   return lines.join('\n')
+}
+
+// —— 兴趣话题检测：关键词匹配（只认方向，不认具体内容）——
+const TAG_KEYWORDS = {
+  单机游戏: ['游戏', '单机', 'steam', '去月球', '打游戏'],
+  动物二创: ['动物', '鱼', '猫', '狗', '怪兽', '二创', '生物'],
+  人文历史: ['历史', '蒙娜丽莎', '卢浮宫', '博物馆', '古代', '古董', '文物'],
+  科学科普: ['科学', '科普', '物理', '数学', '宇宙', '天文'],
+  绘画: ['画', '绘画', '手绘', '插画', '画画'],
+  手工: ['手工', '乐高', '拼装', '装置'],
+  搞笑: ['搞笑', '笑话', '梗', '乐子'],
+  短片: ['短片', '视频', '动画', '影视', '电影'],
+  '设计·创意': ['设计', '创意'],
+  'MAD·AMV': ['mad', 'amv', '剪辑', '混剪'],
+  软件应用: ['软件', '工具', '插件', '代码', '编程'],
+}
+
+/** 看这轮话题是否命中她的兴趣方向；返回命中的最高分（没命中 0）。 */
+export function matchInterest(text, interest) {
+  const t = String(text ?? '').toLowerCase()
+  if (!t) return 0
+  let best = 0
+  for (const [tag, keywords] of Object.entries(TAG_KEYWORDS)) {
+    if (keywords.some((kw) => t.includes(kw.toLowerCase()))) {
+      best = Math.max(best, Number(interest?.tags?.[tag]?.score ?? 0))
+    }
+  }
+  return best
 }

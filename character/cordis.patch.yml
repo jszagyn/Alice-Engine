@@ -14,6 +14,8 @@
       name: '@alice/dsh-character/voice'
     - id: character-panel
       name: '@alice/dsh-character/panel'
+    - id: character-roam-panel
+      name: '@alice/dsh-character/roam-panel'
     - id: character-qq
       name: '@alice/dsh-character/qq'
     - id: preset-companion

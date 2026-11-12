@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
@@ -11,6 +11,7 @@ import { criticize, logCritic } from './critic.js'
 import { judgeTone } from './llmCritic.js'
 import { loadDiary, renderDiary, saveDiary, writeDiaryLine } from './diary.js'
 import { loadExemplars, recordExemplar } from './exemplars.js'
+import { loadKaomoji, loadStickers, logStickerUsage, pickKaomoji, pickSticker } from './stickers.js'
 import { addFeedItems, extractFeedItems, loadFeed, markFeedUsed, renderFeed } from './feed.js'
 import {
   applyMood,
@@ -45,8 +46,8 @@ import { setReadHook } from '../tools.js'
 import { planReply, renderPlanTurn } from './planner.js'
 import { readReport, renderRoamBrief } from './reader.js'
 import { corpusStamp, fetchComments, ingestCorpus, loadCorpus, markWordsUsed, penalizeWords, pickAnchor, renderCorpusHint, saveCorpus, selectWords } from './corpus.js'
-import { engagementSignal, interestStamp, loadInterest, recordEngagement, recordPick, saveInterest } from './interest.js'
-import { createRateLimiter, parseEvent, qqConfig, sendInParts, shouldAccept, trimForQq } from './qq.js'
+import { engagementSignal, interestStamp, loadInterest, matchInterest, recordEngagement, recordPick, saveInterest } from './interest.js'
+import { createRateLimiter, parseEvent, qqConfig, sendInParts, sendSticker, sendVoice, shouldAccept, trimForQq } from './qq.js'
 import { setInboundHandler } from './qqBus.js'
 import {
   ROAM_MARKER,
@@ -57,6 +58,7 @@ import {
   recordRoam,
   recordSeen,
   seenHint,
+  toggleRoam,
 } from './roam.js'
 import {
   SPEAKUP_MARKER,
@@ -79,7 +81,7 @@ import {
   saveState,
 } from './state.js'
 
-import { synthesize } from './tts.js'
+import { synthesize, wavToMp3 } from './tts.js'
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const APPRAISAL_LOG = join(DATA_DIR, 'appraisal.jsonl')
@@ -105,17 +107,7 @@ function longestCommon(a, b) {
 }
 
 export function loadCharacter() {
-  const character = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'data', 'character.json'), 'utf8'))
-  // 人格/语气可从 persona/*.md 覆盖（无编程自定义：改这两个文件，重启即生效）
-  try {
-    const persona = join(PACKAGE_ROOT, '..', 'persona', '人格.md')
-    if (existsSync(persona)) character.layers.core = readFileSync(persona, 'utf8').trim()
-  } catch {}
-  try {
-    const voice = join(PACKAGE_ROOT, '..', 'persona', '语气.md')
-    if (existsSync(voice)) character.layers.voice = readFileSync(voice, 'utf8').trim()
-  } catch {}
-  return character
+  return JSON.parse(readFileSync(join(PACKAGE_ROOT, 'data', 'character.json'), 'utf8'))
 }
 
 // 只应一声的语气词才值得跳过内容层：「晚上好」这种是要接话的，不能省。
@@ -178,6 +170,16 @@ function logDecision(record) {
   }
 }
 
+/** 群聊记录：只存不加载——记下群里 @ 她这轮的对话，给你以后回看。 */
+function logGroupRound(record) {
+  try {
+    mkdirSync(DATA_DIR, { recursive: true })
+    appendFileSync(join(DATA_DIR, 'group-chat-log.jsonl'), `${JSON.stringify(record)}\n`, 'utf8')
+  } catch {
+    // Logging must never break a turn.
+  }
+}
+
 export function createEngine(ctx) {
   const character = loadCharacter()
   const state = loadState(character.initial)
@@ -189,6 +191,8 @@ export function createEngine(ctx) {
   let episodic = loadEpisodic()
   let digest = loadDigest()
   let exemplars = loadExemplars()
+  let kaomoji = loadKaomoji()
+  let stickers = loadStickers()
   let roam = loadRoam()
   let feed = loadFeed()
   let seen = loadSeen()
@@ -204,12 +208,9 @@ export function createEngine(ctx) {
   const roamTask = loadRoamTask()
   const roamConfig = character.roam ?? {
     enabled: true,
-    windowStart: 10,
-    windowEnd: 22,
-    minIntervalHours: 3,
-    maxPerDay: 2,
-    tickMinutes: 30,
-    preferOffpeak: true,
+    idleMinutes: 3,
+    costBudget: 5,
+    tickMinutes: 1,
   }
   const speakUpConfig = character.speakUp ?? {
     enabled: true,
@@ -405,16 +406,39 @@ export function createEngine(ctx) {
       name: 'character:exemplars',
       order: 302,
       text: () => {
-        const good = (exemplars?.good ?? []).slice(0, 3).filter((g) => g?.reply)
-        const bad = (exemplars?.bad ?? []).slice(0, 2).filter((b) => b?.reply)
+        const good = (exemplars?.good ?? []).filter((g) => g?.reply)
+        const bad = (exemplars?.bad ?? []).filter((b) => b?.reply)
         if (!good.length && !bad.length) return ''
-        const lines = []
-        if (good.length) {
-          lines.push('你之前这样说，是对的（照这个味道说，别照抄原句）：')
-          for (const g of good) lines.push(`- 「${g.reply}」`)
+        const pickN = (arr, n) => {
+          const pool = [...arr]
+          const out = []
+          while (out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0])
+          return out
         }
-        if (bad.length) {
-          const why = bad.map((b) => (b.reasons?.length ? b.reasons.join('、') : '')).filter(Boolean).join('；')
+        const byCat = (arr) => {
+          const m = {}
+          for (const e of arr) {
+            const c = e.category || '其他'
+            if (!m[c]) m[c] = []
+            m[c].push(e)
+          }
+          return m
+        }
+        const lines = []
+        const goodCats = byCat(good)
+        const goodNames = Object.keys(goodCats)
+        if (goodNames.length) {
+          lines.push('你之前这样说，是对的（照这个味道说，别照抄原句）：')
+          // 每个语气类别（普通/少女心/有立场/安静/好奇/哲思）随机取 3 条，保证各味道都覆盖
+          for (const cat of goodNames) {
+            for (const g of pickN(goodCats[cat], 3)) lines.push(`- 「${g.reply}」`)
+          }
+        }
+        const badCats = byCat(bad)
+        const badNames = Object.keys(badCats)
+        if (badNames.length) {
+          const picked = badNames.flatMap((cat) => pickN(badCats[cat], 1))
+          const why = picked.map((b) => (b.reasons?.length ? b.reasons.join('、') : '')).filter(Boolean).join('、')
           lines.push(why ? `你之前这样说岔了，别再犯（因为：${why}）` : '你之前有几次说岔了，别再那样说。')
         }
         return lines.join('\n')
@@ -739,8 +763,14 @@ export function createEngine(ctx) {
             slot.plan = currentPlan
             if (currentPlan?.mode) slot.modes = [...slot.modes, currentPlan.mode].slice(-6)
             // 情绪层：算这轮要带多少情绪（他的情绪 + 她的兴趣 + 内容档）。
+            // 连续聊天升温：每聊一轮 streak +1，越聊情绪越往上走。
             state.hisEmotion = appraisal?.hisEmotion ?? 'mid'
-            state.emotionLevel = emotionLevel(appraisal?.hisEmotion ?? 'mid', state.curiosity ?? 0.5, currentPlan?.contentWeight ?? 'discuss')
+            state.chatStreak = (state.chatStreak ?? 0) + 1
+            // 兴趣话题：命中她的兴趣方向 → 升温更快 + 稳定中情绪开始。
+            const interested = matchInterest(slot.user, interest) >= 0.15
+            if (interested) state.chatStreak += 1
+            state.emotionLevel = emotionLevel(appraisal?.hisEmotion ?? 'mid', state.curiosity ?? 0.5, currentPlan?.contentWeight ?? 'discuss', state.chatStreak)
+            if (interested && (state.emotionLevel === '低' || state.emotionLevel === '仅')) state.emotionLevel = '中'
           }
         }
       } else if (roamText) {
@@ -852,10 +882,45 @@ export function createEngine(ctx) {
         const target = slot.qq.messageType === 'group'
           ? { kind: 'group', groupId: slot.qq.groupId }
           : { kind: 'private', userId: slot.qq.userId }
-        // QQ 里前导换行看起来像「消息只发了一半」，出站前统一修剪。
-        sendInParts(currentQq(), target, trimForQq(reply))
-          .then((parts) => logRoamDebug({ at: new Date().toISOString(), result: 'qq-sent', parts: parts.length, user: slot.qq.userId }))
-          .catch((error) => logRoamDebug({ at: new Date().toISOString(), result: 'qq-send-failed', error: String(error?.message ?? error).slice(0, 200) }))
+        // 表情包：偶尔带（15% 颜文字 + 15% 表情图），不每句都加。
+        const roll = Math.random()
+        const face = roll < 0.15 ? pickKaomoji(state.emotionLevel, kaomoji) : ''
+        const sticker = roll >= 0.15 && roll < 0.3 ? pickSticker(state.emotionLevel, stickers) : null
+        const cleanReply = trimForQq(reply)
+        const qqReply = face ? `${cleanReply} ${face}` : cleanReply
+        const sendText = () =>
+          sendInParts(currentQq(), target, qqReply)
+            .then((parts) => logRoamDebug({ at: new Date().toISOString(), result: 'qq-sent', parts: parts.length, user: slot.qq.userId }))
+            .catch((error) => logRoamDebug({ at: new Date().toISOString(), result: 'qq-send-failed', error: String(error?.message ?? error).slice(0, 200) }))
+        // 表情图：抽到了就额外发一条图片，并记一次使用（只给你回看）。
+        const sendStickerExtra = () => {
+          if (!sticker) return
+          sendSticker(currentQq(), target, sticker.file)
+            .then(() => logStickerUsage(sticker))
+            .catch((error) => logRoamDebug({ at: new Date().toISOString(), result: 'qq-sticker-failed', error: String(error?.message ?? error).slice(0, 160) }))
+        }
+        // 语音：她让「发语音/语音说/念给我」才发，且只发语音不带文字；合成/发送失败才回退文字。
+        const wantsVoice = /(发语音|语音说|语音回|用语音|念给我|念一下|念出来|读给我|读一下|读出来)/.test(String(slot.user ?? ''))
+        if (wantsVoice && character.tts?.enabled && character.tts.refAudio) {
+          synthesize(cleanReply, character.tts, state.emotionLevel ?? '中')
+            .then((audio) => {
+              if (!audio) { sendText(); sendStickerExtra(); return }
+              const mp3 = wavToMp3(audio)
+              if (!mp3) { sendText(); sendStickerExtra(); return }
+              return sendVoice(currentQq(), target, mp3)
+                .then(() => sendStickerExtra())
+                .catch((error) => { logRoamDebug({ at: new Date().toISOString(), result: 'qq-voice-failed', error: String(error?.message ?? error).slice(0, 160) }); sendText(); sendStickerExtra(); })
+                .finally(() => { try { unlinkSync(mp3) } catch {} })
+            })
+            .catch(() => { sendText(); sendStickerExtra() })
+        } else {
+          sendText()
+          sendStickerExtra()
+        }
+        // 群聊记录：只存不加载——记下 @ 她这轮的对话。
+        if (target.kind === 'group') {
+          logGroupRound({ at: new Date().toISOString(), groupId: slot.qq.groupId, userId: slot.qq.userId, user: slot.user.slice(0, 500), reply: cleanReply })
+        }
       }
       // 主动开口（漫游 / 搭话）也发到 QQ：她在网页里自言自语，QQ 那头也收到。
       // 时间窗和条数已经被 roam / speakup 自己的预算管着，这里只管投递。
@@ -992,8 +1057,9 @@ export function createEngine(ctx) {
       saveState(state)
 
       // 记忆总结（计划 §12）：回合后让模型把这一轮整理成记忆，替掉规则转录。
-      // 只对 chat 轮跑；失败退回规则 utterance/classifyAll，不整段丢掉这一轮。
-      if (llm && (kind === 'chat' || kind === 'qq') && slot.user) {
+      // 只对 chat 轮 + 私聊跑；群聊一概不存——记忆分区只留 master 的。
+      // 失败退回规则 utterance/classifyAll，不整段丢掉这一轮。
+      if (llm && (kind === 'chat' || kind === 'qq') && !(kind === 'qq' && slot.qq?.messageType === 'group') && slot.user) {
         const fallbackRemember = () => {
           try {
             const fresh = loadProfile()
@@ -1389,7 +1455,7 @@ export function createEngine(ctx) {
   async function roamTick() {
     try {
       roam = loadRoam()
-      const decision = mayRoam(roam, roamConfig)
+      const decision = mayRoam(roam, roamConfig, idleMsSince(brief))
       if (!decision.ok) return
       // force 是调试开关：绕过时段和每日上限，但也要有个下限，
       // 否则连着触发会把她同一条见闻连发好几遍（2026-11-01 真的发生过）。
@@ -1465,6 +1531,10 @@ export function createEngine(ctx) {
       }
       best.agent.followup(message)
       recordRoam(roam)
+      if ((roam.cost ?? 0) >= (roamConfig.costBudget ?? 5)) {
+        toggleRoam(roam, false) // 花满预算，自动停
+        logRoamDebug({ at: new Date().toISOString(), result: 'budget-auto-stop', cost: roam.cost })
+      }
       logRoamDebug({ at: new Date().toISOString(), result: 'fired', reason: decision.reason, agent: best.agent.id })
     } catch (error) {
       logRoamDebug({ at: new Date().toISOString(), result: 'error', error: String(error) })

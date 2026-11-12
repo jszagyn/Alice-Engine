@@ -161,6 +161,24 @@ export async function sendInParts(config, target, text, deps = {}) {
   return sent
 }
 
+/** 发语音（record 段）：把本地音频文件发成 QQ 语音消息（群里/私聊都用这个）。 */
+export function sendVoice(config, target, filePath, deps) {
+  const file = 'file:///' + String(filePath).replace(/\\/g, '/')
+  const message = [{ type: 'record', data: { file } }]
+  return target.kind === 'group'
+    ? callApi(config, 'send_group_msg', { group_id: Number(target.groupId), message }, deps)
+    : callApi(config, 'send_private_msg', { user_id: Number(target.userId), message }, deps)
+}
+
+/** 发表情图（image 段）：把本地图片发成 QQ 图片消息。 */
+export function sendSticker(config, target, filePath, deps) {
+  const file = 'file:///' + String(filePath).replace(/\\/g, '/')
+  const message = [{ type: 'image', data: { file } }]
+  return target.kind === 'group'
+    ? callApi(config, 'send_group_msg', { group_id: Number(target.groupId), message }, deps)
+    : callApi(config, 'send_private_msg', { user_id: Number(target.userId), message }, deps)
+}
+
 /**
  * NapCat 的 HTTP 上报签名：配置了 secret 时，它发 X-Signature: sha1=<hmac-sha1-hex>。
  * 没配 secret 就不校验（本地回环场景）。
